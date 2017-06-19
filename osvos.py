@@ -418,7 +418,7 @@ def _train(dataset, initial_ckpt, supervison, learning_rate, logs_path, max_trai
     test_image_path: If image path provided, every save_step the result of the network with this image is stored
     Returns:
     """
-    model_name = os.path.join(logs_path, ckpt_name+".ckpt")
+    model_name = os.path.join(logs_path, ckpt_name + ".ckpt")
     if config is None:
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -606,7 +606,9 @@ def train_finetune(dataset, initial_ckpt, supervison, learning_rate, logs_path, 
            ckpt_name)
 
 
-def test(dataset, checkpoint_file, result_path, config=None):
+def test(dataset, checkpoint_file, result_path,
+         save_img=True, overlay_color=[0, 0, 255], transparency=0.6,
+         config=None):
     """Test one sequence
     Args:
     dataset: Reference to a Dataset object instance
@@ -643,12 +645,23 @@ def test(dataset, checkpoint_file, result_path, config=None):
             os.makedirs(result_path)
         for frame in range(0, dataset.get_test_size()):
             img, curr_img = dataset.next_batch(batch_size, 'test')
-            curr_frame = curr_img[0].split('/')[-1].split('.')[0] + '.png'
+            curr_frame = curr_img[0].split('/')[-1].split('.')[0]
             image = preprocess_img(img[0])
             res = sess.run(probabilities, feed_dict={input_image: image})
-            res_np = res.astype(np.float32)[0, :, :, 0] > 162.0/255.0
-            scipy.misc.imsave(os.path.join(result_path, curr_frame), res_np.astype(np.float32))
-            print 'Saving ' + os.path.join(result_path, curr_frame)
+            res_np = res.astype(np.float32)[0, :, :, 0] > 162.0 / 255.0
 
+            mask = res_np / np.max(res_np)
 
+            im_over = np.ndarray(img[0].shape)
+            im_over[:, :, 0] = (1 - mask) * img[0][:, :, 0] + mask * (
+                overlay_color[0] * transparency + (1 - transparency) * img[0][:, :, 0])
+            im_over[:, :, 1] = (1 - mask) * img[0][:, :, 1] + mask * (
+                overlay_color[1] * transparency + (1 - transparency) * img[0][:, :, 1])
+            im_over[:, :, 2] = (1 - mask) * img[0][:, :, 2] + mask * (
+                overlay_color[2] * transparency + (1 - transparency) * img[0][:, :, 2])
 
+            scipy.misc.imsave(os.path.join(result_path, 'masks', curr_frame + '.png'), res_np.astype(np.float32))
+            if save_img:
+                scipy.misc.imsave(os.path.join(result_path, 'images', curr_frame + '.jpg'), im_over)
+
+            print('Saving images: {}'.format(curr_frame))

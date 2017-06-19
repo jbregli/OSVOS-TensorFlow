@@ -46,10 +46,15 @@ img_path = os.path.join('data', 'interim', 'osvos', 'JPEGImages', '480p', seq_na
 anno_path = os.path.join('data', 'interim', 'osvos', 'Annotations', '480p', seq_name)
 result_path = os.path.join('data', 'processed', 'osvos', 'segmentation', '480p', seq_name)
 
+# Output: img+mask combined
+save_img_result = True
+overlay_color = [0, 0, 255]
+transparency = 0.6
+
 # Train parameters
 parent_path = os.path.join('models', 'OSVOS_parent', 'OSVOS_parent.ckpt-50000')
 logs_path = os.path.join('models', seq_name)
-max_training_iters = 600
+max_training_iters = 500
 
 # Define Dataset
 test_frames = sorted(os.listdir(img_path))
@@ -78,29 +83,30 @@ if train_model:
 with tf.Graph().as_default():
     with tf.device('/gpu:' + str(gpu_id)):
         checkpoint_path = os.path.join('models', seq_name, seq_name + '.ckpt-' + str(max_training_iters))
-        osvos.test(dataset, checkpoint_path, os.path.join(result_path, 'masks'))
+        osvos.test(dataset, checkpoint_path, result_path,
+                   save_img_result, overlay_color, transparency)
 
-# Save results
-overlay_color = [255, 0, 0]
-transparency = 0.6
-plt.ion()
-for img_p in test_frames:
-    frame_num = img_p.split('.')[0]
-    img = np.array(Image.open(os.path.join(img_path, img_p)))
-    mask = np.array(Image.open(os.path.join(result_path, frame_num + '.png')))
-    mask = mask / np.max(mask)
-    im_over = np.ndarray(img.shape)
-    im_over[:, :, 0] = (1 - mask) * img[:, :, 0] + mask * (
-    overlay_color[0] * transparency + (1 - transparency) * img[:, :, 0])
-    im_over[:, :, 1] = (1 - mask) * img[:, :, 1] + mask * (
-    overlay_color[1] * transparency + (1 - transparency) * img[:, :, 1])
-    im_over[:, :, 2] = (1 - mask) * img[:, :, 2] + mask * (
-    overlay_color[2] * transparency + (1 - transparency) * img[:, :, 2])
-
-    imsave(os.path.join(result_path, 'images', img_p), im_over)
-
-    # plt.imshow(im_over.astype(np.uint8))
-    # plt.axis('off')
-    # plt.show()
-    # plt.pause(0.01)
-    # plt.clf()
+# # Save results
+# overlay_color = [255, 0, 0]
+# transparency = 0.6
+# # plt.ion()
+# for img_p in test_frames:
+#     frame_num = img_p.split('.')[0]
+#     img = np.array(Image.open(os.path.join(img_path, img_p)))
+#     mask = np.array(Image.open(os.path.join(result_path, 'masks', frame_num + '.png')))
+#     mask /= np.max(mask)
+#     im_over = np.ndarray(img.shape)
+#     im_over[:, :, 0] = (1 - mask) * img[:, :, 0] + mask * (
+#     overlay_color[0] * transparency + (1 - transparency) * img[:, :, 0])
+#     im_over[:, :, 1] = (1 - mask) * img[:, :, 1] + mask * (
+#     overlay_color[1] * transparency + (1 - transparency) * img[:, :, 1])
+#     im_over[:, :, 2] = (1 - mask) * img[:, :, 2] + mask * (
+#     overlay_color[2] * transparency + (1 - transparency) * img[:, :, 2])
+#
+#     imsave(os.path.join(result_path, 'images', img_p), im_over)
+#
+#     # plt.imshow(im_over.astype(np.uint8))
+#     # plt.axis('off')
+#     # plt.show()
+#     # plt.pause(0.01)
+#     # plt.clf()
